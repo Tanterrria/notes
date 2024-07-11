@@ -144,21 +144,42 @@ s(i, j) = \frac{\sum_{u \in U_i \cap U_j} (r_{ui} - \overline{r}_u)(r_{vi} - \ov
 ![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/2.png)
 
 
-### Метрики качества ранжирования
+## Метрики качества ранжирования. 
 
-#### 1. Mean average precision
+### 1. Mean average precision
 
 Mean average precision at K (map@K) — одна из наиболее часто используемых метрик качества ранжирования. Чтобы разобраться в том, как она работает начнем с «основ».
 
 Замечание: "*precision" метрики используется в бинарных задачах, где $r^{true}(e)$ принимает только два значения: 0 и 1.
 
-<img src="https://habrastorage.org/getpro/habr/post_images/90e/913/7cf/90e9137cf2ca275424ccd56cb7151eaf.svg">
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/3.png)
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/4.png)
 
+### 2. Normalized Discounted Cumulative Gain
 
+Normalized discounted cumulative gain (nDCG) — еще одна распространенная метрика качества ранжирования. Как и в случае с map@K, начнем с основ.
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/5.png)
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/6.png)
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/7.png)
 
+### 3. Mean reciprocal rank (MRR)
 
+![image](https://github.com/Tanterrria/notes/blob/main/recsys/pics/8.png)
+
+### 4. Метрики на основе ранговой корреляции 
+
+- **Кэндалла** (который основан на подсчете согласованных
+(и несогласованных) пар у перестановок — пар элементов, которым перестановки присвоили одинаковый (разный) порядок)
+- и **Спирмена** (корреляция Пирсона, посчитанная на значениях рангов).
+
+Метрики на основе ранговой корреляции обладают уже известными нам недостатком: они не учитывают позицию элементов (еще хуже чем p@K, т.к. корреляция считается по всем элементам, а не по K элементам с наибольшим рангом). Поэтому на практике используются крайне редко.
+
+### 4. Метрики на основе каскадной модели поведения
+
+- Expected reciprocal rank (ERR), где рассчитывается истинная релевантность элемента оказавшегося на позиции k после сортировки по убыванию r(e)
+- PFound 
