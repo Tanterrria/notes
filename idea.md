@@ -20,6 +20,19 @@
 * `reg_alpha`: L1 регуляризация (0-1)
 * `reg_lambda`: L2 регуляризация (0-1)
 
+Пример значений для гиперпараметров:
+```python
+param_grid = {
+    'max_depth': [3, 4, 5, 6],
+    'learning_rate': [0.01, 0.05, 0.1],
+    'n_estimators': [100, 200, 300],
+    'subsample': [0.6, 0.7, 0.8],
+    'colsample_bytree': [0.6, 0.7, 0.8],
+    'reg_alpha': [0, 0.1, 1],
+    'reg_lambda': [0, 0.1, 1]
+}
+```
+
 В машинном обучении мы пытаемся найти функцию, которая минимизировала бы функцию потерь, то есть чтобы наборы данных трейна Х и предсказания У были близки друг к другу. Но если мы не будем следить за состоянием, насколько они близки друг к другу, то придем к переобучению (предсказание хорошо отрабатывает на тренировочных данных и никак на валидационных, слишком хорошо под тест подстроились). Регуляризация - добавление штрафа к функции потерь.
 L1 регуляризация - избавляет нас от незначимых признаков.
 L2 регуляризация - борется с коррелирующими признаками.
@@ -333,12 +346,38 @@ df = df.fillna(df.median())
   * Как это повлияет на распределение
   * Есть ли бизнес-смысл в выбросах
 
+Пример визуализации выбросов:
+```python
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def plot_outliers(df, column):
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x=df[column])
+    plt.title(f'Распределение {column} с выбросами')
+    plt.show()
+    
+    # После обработки выбросов
+    df_cleaned = remove_outliers(df, column)
+    plt.figure(figsize=(10, 6))
+    sns.boxplot(x=df_cleaned[column])
+    plt.title(f'Распределение {column} после обработки выбросов')
+    plt.show()
+```
 
 ## 4. Метрики для оценки модели
 * Precision и Recall
 * ROC-AUC
 * F1-score
 
+Примеры хороших значений метрик:
+```python
+print("Хорошие значения метрик:")
+print("ROC-AUC: > 0.8")
+print("F1-score: > 0.7")
+print("Precision: > 0.6")
+print("Recall: > 0.7")
+```
 
 Пример использования гридсёрча:
 ``` python
@@ -409,7 +448,7 @@ for metric in scoring.keys():
 Интерпретация результатов:
 * Если ROC-AUC высокий, а F1 низкий:
   * Модель хорошо различает классы
-  * Но может быть проблема с порогом классификации
+  * Но может быть проблема с порогом классификации (то есть если вероятность увольнения > 0,5 - он увольняется. 0,5 - это и есть порог классификации).
   * Нужно настроить порог для баланса precision/recall
 * Если F1 высокий, а ROC-AUC низкий:
   * Модель хорошо работает на текущем пороге
@@ -426,3 +465,101 @@ for metric in scoring.keys():
 * F1-score для баланса ошибок
 * Precision для минимизации ложных тревог
 * Recall для минимизации пропущенных увольнений
+
+### Анализ результатов GridSearch для определения промежуточных значений
+
+#### Методы анализа результатов поиска:
+
+1. **Визуализация результатов поиска**
+   ```python
+   import matplotlib.pyplot as plt
+   import seaborn as sns
+   
+   def plot_grid_search_results(grid_search, param_name):
+       # Получаем результаты
+       results = grid_search.cv_results_
+       param_values = results[f'param_{param_name}'].data
+       mean_scores = results['mean_test_score']
+       
+       # Строим график
+       plt.figure(figsize=(10, 6))
+       plt.plot(param_values, mean_scores, 'o-')
+       plt.xlabel(param_name)
+       plt.ylabel('ROC-AUC')
+       plt.title(f'Зависимость ROC-AUC от {param_name}')
+       plt.grid(True)
+       plt.show()
+   
+   # Пример использования
+   plot_grid_search_results(grid_search, 'max_depth')
+   ```
+
+2. **Анализ разрыва между значениями**
+   ```python
+   def analyze_param_gaps(grid_search, param_name):
+       results = grid_search.cv_results_
+       param_values = results[f'param_{param_name}'].data
+       mean_scores = results['mean_test_score']
+       
+       # Сортируем по значениям параметра
+       sorted_indices = np.argsort(param_values)
+       param_values = param_values[sorted_indices]
+       mean_scores = mean_scores[sorted_indices]
+       
+       # Находим разрывы в производительности
+       score_diffs = np.diff(mean_scores)
+       significant_gaps = np.where(np.abs(score_diffs) > 0.01)[0]  # порог 0.01
+       
+       print(f"Значительные изменения в {param_name}:")
+       for gap in significant_gaps:
+           print(f"Между {param_values[gap]} и {param_values[gap+1]}: "
+                 f"изменение ROC-AUC на {score_diffs[gap]:.3f}")
+   ```
+
+3. **Проверка стабильности результатов**
+   ```python
+   def check_param_stability(grid_search, param_name):
+       results = grid_search.cv_results_
+       param_values = results[f'param_{param_name}'].data
+       std_scores = results['std_test_score']
+       
+       # Находим параметры с высокой стабильностью
+       stable_params = np.where(std_scores < 0.05)[0]  # порог 0.05
+       
+       print(f"Стабильные значения {param_name}:")
+       for idx in stable_params:
+           print(f"{param_name} = {param_values[idx]}: "
+                 f"std = {std_scores[idx]:.3f}")
+   ```
+
+#### Когда добавлять промежуточные значения в params гиперпараметр:
+
+1. **Если на графике виден резкий скачок**
+   * Между двумя значениями параметра большой разрыв в производительности
+   * Нужно добавить значения между этими точками
+
+2. **Если есть нестабильные результаты**
+   * Большое стандартное отклонение для некоторых значений
+   * Стоит добавить больше значений вокруг нестабильных точек
+
+3. **Если лучшие параметры на границе диапазона**
+   * Лучшее значение параметра - минимальное или максимальное
+   * Нужно расширить диапазон поиска
+
+#### Пример использования:
+```python
+# После выполнения GridSearch
+grid_search.fit(X, y)
+
+# Анализируем результаты
+plot_grid_search_results(grid_search, 'max_depth')
+analyze_param_gaps(grid_search, 'max_depth')
+check_param_stability(grid_search, 'max_depth')
+
+# На основе анализа корректируем param_grid
+param_grid = {
+    'max_depth': [3, 4, 5, 6, 7],  # добавили 7
+    'learning_rate': [0.01, 0.03, 0.05, 0.1],  # добавили 0.03
+    'n_estimators': [100, 200, 300, 400]  # добавили 400
+}
+```
